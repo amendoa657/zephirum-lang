@@ -58,7 +58,8 @@ r = ZYQLQuantumGate(3, lambda x: x ^ 1).run_quantum(shots=2048)
 print(f"{r[\"decision\"]} {r[\"refusal_reason\"]}")
 ')
           
-          EXPECTED_REASON="REFUSED INSIDE_NOISE_BAND"
+          EXPECTED_REASON="REFUSED BALANCED_ORACLE"
+          #EXPECTED_REASON="REFUSED INSIDE_NOISE_BAND"
           
           if [[ "$BALANCED_OUTPUT" != *"$EXPECTED_REASON"* ]]; then
             echo "ERROR: Balanced oracle output diverged!"
