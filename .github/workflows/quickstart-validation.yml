@@ -32,14 +32,17 @@ jobs:
         run: |
           source venv/bin/activate
           
-          # Garante isolamento total removendo caminhos locais
+          # Garante isolamento total removendo caminhos locais e variáveis de ambiente
           export PYTHONPATH=""
           
           echo "=== Running Oracle Test ==="
           ORACLE_OUTPUT=$(python -c '
 import sys
-if sys.path and sys.path[0] == "": sys.path.pop(0)
-from zyql_quantum_gate import ZYQLQuantumGate
+# Remove a pasta atual do caminho de busca para garantir isolamento absoluto
+if sys.path and (sys.path[0] == "" or sys.path[0] == "."): sys.path.pop(0)
+if "." in sys.path: sys.path.remove(".")
+
+from zephirum import ZYQLQuantumGate
 res = ZYQLQuantumGate(3, lambda x: 0).run_quantum(shots=2048)
 print(res["decision"])
 ')
@@ -52,14 +55,15 @@ print(res["decision"])
           echo "=== Running Balanced Oracle Test ==="
           BALANCED_OUTPUT=$(python -c '
 import sys
-if sys.path and sys.path[0] == "": sys.path.pop(0)
-from zyql_quantum_gate import ZYQLQuantumGate
+if sys.path and (sys.path[0] == "" or sys.path[0] == "."): sys.path.pop(0)
+if "." in sys.path: sys.path.remove(".")
+
+from zephirum import ZYQLQuantumGate
 r = ZYQLQuantumGate(3, lambda x: x ^ 1).run_quantum(shots=2048)
 print(f"{r[\"decision\"]} {r[\"refusal_reason\"]}")
 ')
           
           EXPECTED_REASON="REFUSED BALANCED_ORACLE"
-          #EXPECTED_REASON="REFUSED INSIDE_NOISE_BAND"
           
           if [[ "$BALANCED_OUTPUT" != *"$EXPECTED_REASON"* ]]; then
             echo "ERROR: Balanced oracle output diverged!"
