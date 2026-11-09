@@ -1,0 +1,70 @@
+name: Quickstart Integration Test
+
+on:
+  push:
+    branches:
+      - main
+  schedule:
+    # Isso aqui roda toda semana (toda segunda-feira à meia-noite)
+    - cron: '0 0 * * 1'
+
+jobs:
+  test-user-experience:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install package from PyPI (Clean Environment)
+        run: |
+          python -m venv venv
+          source venv/bin/activate
+          pip install --upgrade pip
+          pip install zephirum
+          
+      - name: Validate Quickstart Examples Output
+        run: |
+          source venv/bin/activate
+          
+          # Garante isolamento total removendo caminhos locais
+          export PYTHONPATH=""
+          
+          echo "=== Running Oracle Test ==="
+          ORACLE_OUTPUT=$(python -c '
+import sys
+if sys.path and sys.path[0] == "": sys.path.pop(0)
+from zyql_quantum_gate import ZYQLQuantumGate
+res = ZYQLQuantumGate(3, lambda x: 0).run_quantum(shots=2048)
+print(res["decision"])
+')
+          
+          if [ "$ORACLE_OUTPUT" != "0" ]; then
+            echo "ERROR: Constant oracle returned $ORACLE_OUTPUT instead of 0"
+            exit 1
+          fi
+          
+          echo "=== Running Balanced Oracle Test ==="
+          BALANCED_OUTPUT=$(python -c '
+import sys
+if sys.path and sys.path[0] == "": sys.path.pop(0)
+from zyql_quantum_gate import ZYQLQuantumGate
+r = ZYQLQuantumGate(3, lambda x: x ^ 1).run_quantum(shots=2048)
+print(f"{r[\"decision\"]} {r[\"refusal_reason\"]}")
+')
+          
+          EXPECTED_REASON="REFUSED INSIDE_NOISE_BAND"
+          
+          if [[ "$BALANCED_OUTPUT" != *"$EXPECTED_REASON"* ]]; then
+            echo "ERROR: Balanced oracle output diverged!"
+            echo "Expected to contain: $EXPECTED_REASON"
+            echo "Actual output: $BALANCED_OUTPUT"
+            exit 1
+          fi
+          
+          echo "Success: All production installation tests passed!"
